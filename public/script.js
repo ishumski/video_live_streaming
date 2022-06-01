@@ -1,56 +1,57 @@
-const socket =  io('/') ;
+const socket = io('/')
 const videoGrid = document.getElementById('video-grid')
-const myPeer = new Peer( undefined, {
+const myPeer = new Peer(undefined, {
     host: '/',
     port: '3001'
 })
-const peers = {}
 const myVideo = document.createElement('video')
+
 myVideo.muted = true
 
+const peers = {}
 navigator.mediaDevices.getUserMedia({
-    audio: true,
     video: true,
-}).then(stream=>{
+    audio: true
+}).then(stream => {
     addVideoStream(myVideo, stream)
 
-    myPeer.on('call', (call)=>{
+    myPeer.on('call', call => {
         call.answer(stream)
         const video = document.createElement('video')
-        call.on('stream', userVideoStream=>{
+        call.on('stream', userVideoStream => {
             addVideoStream(video, userVideoStream)
         })
     })
 
-    socket.on('user-connected', userId=>{
-        connectionToNewUser(userId, stream)
+    socket.on('user-connected', userId => {
+        connectToNewUser(userId, stream)
     })
 })
 
-socket.on('user-disconnected', userId=> console.log(userId))
-
-myPeer.on('open', id =>{
-    socket.emit('join-room',ROOM_ID, id )
+socket.on('user-disconnected', userId => {
+    if (peers[userId]) peers[userId].close()
 })
 
-socket.on('user-connected', (userId)=>{
-    console.log(`User id ${userId}`, userId)
-    if(peers[userId]) peers[userId].close()
+myPeer.on('open', id => {
+    socket.emit('join-room', ROOM_ID, id)
 })
 
-function connectionToNewUser(userId, stream){
+function connectToNewUser(userId, stream) {
     const call = myPeer.call(userId, stream)
-    const video = document.createElement("video")
+    const video = document.createElement('video')
     call.on('stream', userVideoStream => {
         addVideoStream(video, userVideoStream)
     })
-    call.on('close', ()=> video.remove())
+    call.on('close', () => {
+        video.remove()
+    })
+
     peers[userId] = call
 }
 
-function addVideoStream(video, stream){
+function addVideoStream(video, stream) {
     video.srcObject = stream
-    video.addEventListener('loadedmetadata', ()=>{
+    video.addEventListener('loadedmetadata', () => {
         video.play()
     })
     videoGrid.append(video)
